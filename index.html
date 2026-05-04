@@ -1,40 +1,36 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-	<!-- Thêm dòng này vào giữa thẻ <head> và </head> -->
-   <link rel="manifest" href="manifest.json">
-	<link rel="icon" type="image/png" sizes="192x192" href="icon.png">
-	<link rel="icon" type="image/png" sizes="512x512" href="icon.png">
-	<link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
     <meta name="theme-color" content="#0056b3">
-    <!-- ... các thẻ khác ... -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lite Tube - for old mobile/car - By DoanThanhHung.Work1@gmail.com</title>
+    <title>Lite Tube - for old mobile/car</title>
     <style>
         body { font-family: sans-serif; background: #111; color: #ccc; margin: 0; padding: 10px; }
         #search-box { width: 100%; display: flex; margin-bottom: 20px; position: sticky; top: 0; z-index: 99; background: #111; padding: 5px 0; }
         input { flex: 1; padding: 12px; background: #222; border: 1px solid #444; color: #fff; font-size: 16px; }
         button { padding: 12px; background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; }
         
-        .video-item { display: flex; border-bottom: 1px solid #333; padding: 12px 0; text-decoration: none; color: inherit; align-items: center; cursor: pointer; }
+        /* Ép GPU xử lý để giảm RAM */
+        iframe { transform: translateZ(0); width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        
+        .video-item { display: flex; border-bottom: 1px solid #333; padding: 12px 0; color: inherit; align-items: center; cursor: pointer; }
         .thumb { width: 120px; height: auto; margin-right: 15px; border-radius: 4px; background: #222; }
         .info { flex: 1; overflow: hidden; }
         .title { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .meta { font-size: 12px; color: #888; }
 
         #player-container { position: sticky; top: 0; background: #000; padding: 5px 0; z-index: 100; display: none; border-bottom: 2px solid #0056b3; }
-        video { width: 100%; max-height: 240px; background: #000; }
         .close-btn { color: #ff4444; cursor: pointer; font-weight: bold; padding: 8px; display: inline-block; background: #222; margin-bottom: 5px; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-    <div id="player-container">
-        <span class="close-btn" onclick="closePlayer()">[ ĐÓNG TRÌNH PHÁT X ]</span>
-        <video id="main-video" controls autoplay playsinline></video>
-        <h3 id="playing-title" style="font-size: 14px; padding: 8px; margin: 0; color: #fff;"></h3>
-    </div>
+    <div id="player-container"></div>
 
     <div id="search-box">
         <input type="text" id="query" placeholder="Tìm video trên máy cũ..." onkeypress="if(event.key==='Enter') search()">
@@ -42,92 +38,80 @@
     </div>
 
     <div id="results">
-        <p style="text-align: center; margin-top: 50px;">Hệ thống đã sẵn sàng. Nhập từ khóa để tìm kiếm.</p>
+        <p style="text-align: center; margin-top: 50px;">Hệ thống đã sẵn sàng.</p>
     </div>
 
     <script>
-        // URL Apps Script của bạn
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxEZy6agtbhlPQqQlLUIo8E1LfpqTvDa0oPMh0vXc11g8W9vvhxm2FL0NOe2ZnqjdQqjQ/exec";
-        
-        // Dùng server dự phòng chỉ để lấy luồng video
-        const STREAM_SERVERS = [
-            "https://pipedapi.lunar.icu",
-            "https://pipedapi.vube.cloud",
-            "https://pipedapi.drgns.space"
-        ];
-        let currentStreamServerIndex = 0;
 
-       async function search() {
-        const query = document.getElementById('query').value;
-        if(!query) return;
-        
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = "<p style='text-align:center; color: #0088ff;'>Đang tải dữ liệu từ Google...</p>";
-    
-        try {
-            const response = await fetch(`${GAS_URL}?q=${encodeURIComponent(query)}`, {
-                redirect: 'follow'
-            });
-            const data = await response.json();
-            
-            // Kiểm tra xem data có phải là mảng không
-            if(!Array.isArray(data) || data.length === 0) {
-                resultsDiv.innerHTML = "<p style='text-align:center;'>Không tìm thấy video hoặc Server đang bận. Hãy thử lại.</p>";
-                return;
+        async function search() {
+            const query = document.getElementById('query').value;
+            if(!query) return;
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = "<p style='text-align:center; color: #0088ff;'>Đang tải...</p>";
+            try {
+                const response = await fetch(`${GAS_URL}?q=${encodeURIComponent(query)}`, { redirect: 'follow' });
+                const data = await response.json();
+                if(!Array.isArray(data) || data.length === 0) {
+                    resultsDiv.innerHTML = "<p style='text-align:center;'>Không có kết quả.</p>";
+                    return;
+                }
+                resultsDiv.innerHTML = "";
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'video-item';
+                    div.onclick = () => playVideo(item.id, item.title);
+                    div.innerHTML = `
+                        <img class="thumb" src="${item.thumbnail}" loading="lazy">
+                        <div class="info">
+                            <div class="title">${item.title}</div>
+                            <div class="meta">${item.author}</div>
+                        </div>
+                    `;
+                    resultsDiv.appendChild(div);
+                });
+            } catch (error) {
+                resultsDiv.innerHTML = "<p style='color:orange; text-align:center;'>Lỗi kết nối.</p>";
             }
-    
-            resultsDiv.innerHTML = "";
-            data.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'video-item';
-                div.onclick = () => playVideo(item.id, item.title);
-                div.innerHTML = `
-                    <img class="thumb" src="${item.thumbnail}" loading="lazy">
-                    <div class="info">
-                        <div class="title">${item.title}</div>
-                        <div class="meta">${item.author} • ${item.duration}</div>
+        }
+
+        async function playVideo(id, title) {
+            const container = document.getElementById('player-container');
+            
+            // BƯỚC 1: Xóa sạch Iframe cũ và giải phóng RAM video trước đó
+            container.innerHTML = ""; 
+            container.style.display = 'none';
+            
+            // BƯỚC 2: Gọi dọn dẹp rác hệ thống (Garbage Collection) nếu trình duyệt hỗ trợ
+            if (window.gc) window.gc();
+
+            // BƯỚC 3: Tạo trình phát mới sau một khoảng trễ cực ngắn để RAM kịp hồi lại
+            setTimeout(() => {
+                container.style.display = 'block';
+                window.scrollTo(0, 0);
+                container.innerHTML = `
+                    <span class="close-btn" onclick="closePlayer()">[ ĐÓNG TRÌNH PHÁT X ]</span>
+                    <div id="playing-title" style="padding: 10px; font-weight: bold; color: #fff;">${title}</div>
+                    <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000;">
+                        <iframe 
+                            src="https://www.youtube.com/embed/${id}?autoplay=1&vq=medium&rel=0" 
+                            frameborder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen>
+                        </iframe>
                     </div>
                 `;
-                resultsDiv.appendChild(div);
-            });
-        } catch (error) {
-            console.error(error);
-            resultsDiv.innerHTML = "<p style='color:orange; text-align:center;'>Lỗi kết nối Script. Kiểm tra lại URL GAS của bạn.</p>";
+            }, 50);
         }
-    }
 
-	async function playVideo(id, title) {
-		const container = document.getElementById('player-container');
-		
-		// Hiển thị khung và cuộn lên đầu
-		container.style.display = 'block';
-		window.scrollTo(0, 0);
-
-		// Chèn mã nhúng YouTube Embed (vq=medium ép về 360p cho máy cũ)
-		container.innerHTML = `
-			<span class="close-btn" onclick="closePlayer()">[ ĐÓNG TRÌNH PHÁT X ]</span>
-			<div id="playing-title" style="padding: 10px; font-weight: bold; color: #fff;">${title}</div>
-			<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000;">
-				<iframe 
-					style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-					src="https://www.youtube.com/embed/${id}?autoplay=1&vq=medium&rel=0" 
-					frameborder="0" 
-					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-					allowfullscreen>
-				</iframe>
-			</div>
-		`;
-	}
-
-    function closePlayer() {
-		const container = document.getElementById('player-container');
-		// Xóa toàn bộ nội dung bên trong để dừng video hoàn toàn
-		container.innerHTML = `
-			<span class="close-btn" onclick="closePlayer()">[ ĐÓNG TRÌNH PHÁT X ]</span>
-			<div id="player-target"></div>
-		`;
-		container.style.display = 'none';
-	}
+        function closePlayer() {
+            const container = document.getElementById('player-container');
+            // Hủy hoàn toàn nội dung để trình duyệt ngừng load dữ liệu ngầm
+            container.innerHTML = ''; 
+            container.style.display = 'none';
+            // Ép giải phóng bộ nhớ
+            if (window.gc) window.gc();
+        }
     </script>
 </body>
 </html>
