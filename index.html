@@ -40,73 +40,93 @@
         <p style="text-align: center;">Nhập từ khóa để xem video cho máy yếu...</p>
     </div>
 
-    <script>
-        const API_BASE = "https://pipedapi.kavin.rocks"; // Instance công cộng của Piped
+   <script>
+    // Danh sách các máy chủ dự phòng, nếu cái này lỗi bạn có thể thay cái khác
+    // Một số instance tốt: https://pipedapi.lunar.icu, https://pipedapi.drgns.space, https://pipedapi.vube.cloud
+    const API_BASE = "https://pipedapi.lunar.icu"; 
 
-        async function search() {
-            const query = document.getElementById('query').value;
-            if(!query) return;
+    async function search() {
+        const query = document.getElementById('query').value;
+        if(!query) return;
+        
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = "<p style='text-align:center'>Đang tìm kiếm...</p>";
+
+        try {
+            // Thêm tham số để tránh cache và kiểm tra phản hồi
+            const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}&filter=all`);
             
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = "Đang tải...";
-
-            try {
-                const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}&filter=all`);
-                const data = await response.json();
-                
-                resultsDiv.innerHTML = "";
-                data.items.forEach(item => {
-                    if(item.type === 'video') {
-                        const div = document.createElement('div');
-                        div.className = 'video-item';
-                        div.onclick = () => playVideo(item.url.split('=')[1], item.title);
-                        div.innerHTML = `
-                            <img class="thumb" src="${item.thumbnail}" loading="lazy">
-                            <div class="info">
-                                <div class="title">${item.title}</div>
-                                <div class="meta">${item.uploaderName} • ${item.duration} giây</div>
-                            </div>
-                        `;
-                        resultsDiv.appendChild(div);
-                    }
-                });
-            } catch (error) {
-                resultsDiv.innerHTML = "Lỗi kết nối. Hãy thử lại.";
+            if (!response.ok) throw new Error("Server đang bận");
+            
+            const data = await response.json();
+            
+            if(!data.items || data.items.length === 0) {
+                resultsDiv.innerHTML = "Không tìm thấy kết quả.";
+                return;
             }
+
+            resultsDiv.innerHTML = "";
+            data.items.forEach(item => {
+                if(item.type === 'video') {
+                    const div = document.createElement('div');
+                    div.className = 'video-item';
+                    // Tối ưu Thumbnail: Dùng ảnh nhỏ hơn để máy yếu load nhanh
+                    const thumbUrl = item.thumbnail;
+                    
+                    div.onclick = () => playVideo(item.url.split('=')[1], item.title);
+                    div.innerHTML = `
+                        <img class="thumb" src="${thumbUrl}" loading="lazy" onerror="this.src='https://via.placeholder.com/100x60?text=No+Thumb'">
+                        <div class="info">
+                            <div class="title">${item.title}</div>
+                            <div class="meta">${item.uploaderName} • ${item.duration}s</div>
+                        </div>
+                    `;
+                    resultsDiv.appendChild(div);
+                }
+            });
+        } catch (error) {
+            console.error(error);
+            resultsDiv.innerHTML = `<p style='color:orange; text-align:center'>Máy chủ ${API_BASE.split('//')[1]} đang quá tải hoặc gặp lỗi CORS. <br><br> Hãy thử lại sau vài giây hoặc báo cho admin thay Server.</p>`;
         }
+    }
 
-        async function playVideo(id, title) {
-            const container = document.getElementById('player-container');
-            const videoTag = document.getElementById('main-video');
-            const titleTag = document.getElementById('playing-title');
+    async function playVideo(id, title) {
+        const container = document.getElementById('player-container');
+        const videoTag = document.getElementById('main-video');
+        const titleTag = document.getElementById('playing-title');
 
-            container.style.display = 'block';
-            titleTag.innerText = "Đang lấy luồng: " + title;
-            window.scrollTo(0, 0);
+        container.style.display = 'block';
+        titleTag.innerText = "Đang lấy luồng video...";
+        window.scrollTo(0, 0);
 
-            try {
-                const res = await fetch(`${API_BASE}/streams/${id}`);
-                const data = await res.json();
-                
-                // Chọn luồng video chất lượng thấp (thường là MP4/H264) để chip yếu không bị lag
-                // Ưu tiên video có cả tiếng (videoStreams) và độ phân giải khoảng 360p
-                const lowResStream = data.videoStreams.find(s => s.quality === '360p' && !s.videoOnly) 
-                                   || data.videoStreams[0];
+        try {
+            const res = await fetch(`${API_BASE}/streams/${id}`);
+            const data = await res.json();
+            
+            // Tìm luồng video chất lượng thấp nhất để máy cũ chạy mượt (thường là 240p hoặc 360p)
+            let stream = data.videoStreams.find(s => s.quality === '360p' && !s.videoOnly) 
+                         || data.videoStreams.find(s => !s.videoOnly)
+                         || data.videoStreams[0];
 
-                videoTag.src = lowResStream.url;
-                videoTag.play();
+            if(stream) {
+                videoTag.src = stream.url;
+                videoTag.play().catch(e => console.log("Cần nhấn Play thủ công"));
                 titleTag.innerText = title;
-            } catch (error) {
-                alert("Không thể phát video này.");
+            } else {
+                throw new Error();
             }
+        } catch (error) {
+            alert("Lỗi: Không thể lấy luồng video. Có thể video bị hạn chế vùng.");
+            container.style.display = 'none';
         }
+    }
 
-        function closePlayer() {
-            const videoTag = document.getElementById('main-video');
-            videoTag.pause();
-            videoTag.src = "";
-            document.getElementById('player-container').style.display = 'none';
-        }
-    </script>
+    function closePlayer() {
+        const videoTag = document.getElementById('main-video');
+        videoTag.pause();
+        videoTag.src = "";
+        document.getElementById('player-container').style.display = 'none';
+    }
+</script>
 </body>
 </html>
