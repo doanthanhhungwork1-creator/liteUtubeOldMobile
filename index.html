@@ -15,7 +15,6 @@
         input { flex: 1; padding: 12px; background: #222; border: 1px solid #444; color: #fff; font-size: 16px; }
         button { padding: 12px; background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; }
         
-        /* Ép GPU xử lý để giảm RAM */
         iframe { transform: translateZ(0); width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
         
         .video-item { display: flex; border-bottom: 1px solid #333; padding: 12px 0; color: inherit; align-items: center; cursor: pointer; }
@@ -43,6 +42,15 @@
 
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxEZy6agtbhlPQqQlLUIo8E1LfpqTvDa0oPMh0vXc11g8W9vvhxm2FL0NOe2ZnqjdQqjQ/exec";
+
+        // CƠ CHẾ MỚI: Tự động dọn dẹp RAM khi đóng app (nhấn nút X)
+        window.addEventListener('beforeunload', function () {
+            closePlayer();
+        });
+
+        window.addEventListener('pagehide', function () {
+            closePlayer();
+        });
 
         async function search() {
             const query = document.getElementById('query').value;
@@ -77,15 +85,10 @@
 
         async function playVideo(id, title) {
             const container = document.getElementById('player-container');
-            
-            // BƯỚC 1: Xóa sạch Iframe cũ và giải phóng RAM video trước đó
             container.innerHTML = ""; 
             container.style.display = 'none';
-            
-            // BƯỚC 2: Gọi dọn dẹp rác hệ thống (Garbage Collection) nếu trình duyệt hỗ trợ
             if (window.gc) window.gc();
 
-            // BƯỚC 3: Tạo trình phát mới sau một khoảng trễ cực ngắn để RAM kịp hồi lại
             setTimeout(() => {
                 container.style.display = 'block';
                 window.scrollTo(0, 0);
@@ -106,10 +109,10 @@
 
         function closePlayer() {
             const container = document.getElementById('player-container');
-            // Hủy hoàn toàn nội dung để trình duyệt ngừng load dữ liệu ngầm
-            container.innerHTML = ''; 
-            container.style.display = 'none';
-            // Ép giải phóng bộ nhớ
+            if (container) {
+                container.innerHTML = ''; 
+                container.style.display = 'none';
+            }
             if (window.gc) window.gc();
         }
     </script>
