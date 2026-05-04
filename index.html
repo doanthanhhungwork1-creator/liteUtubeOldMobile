@@ -89,44 +89,38 @@
         }
     }
 
-   async function playVideo(id, title) {
-    const container = document.getElementById('player-container');
-    const titleTag = document.getElementById('playing-title');
-    const videoTag = document.getElementById('main-video');
+	async function playVideo(id, title) {
+		const container = document.getElementById('player-container');
+		
+		// Hiển thị khung và cuộn lên đầu
+		container.style.display = 'block';
+		window.scrollTo(0, 0);
 
-    // Hiển thị khung phát video
-    container.style.display = 'block';
-    titleTag.innerText = title;
-    window.scrollTo(0, 0);
+		// Chèn mã nhúng YouTube Embed (vq=medium ép về 360p cho máy cũ)
+		container.innerHTML = `
+			<span class="close-btn" onclick="closePlayer()">[ ĐÓNG TRÌNH PHÁT X ]</span>
+			<div id="playing-title" style="padding: 10px; font-weight: bold; color: #fff;">${title}</div>
+			<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000;">
+				<iframe 
+					style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+					src="https://www.youtube.com/embed/${id}?autoplay=1&vq=medium&rel=0" 
+					frameborder="0" 
+					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+					allowfullscreen>
+				</iframe>
+			</div>
+		`;
+	}
 
-    /**
-     * Giải pháp cho máy cũ & ổn định:
-     * 1. Sử dụng YouTube Embed Player để tránh lỗi CORS và sập server Piped.
-     * 2. Thêm tham số vq=medium để ép YouTube ưu tiên phát ở độ phân giải 360p.
-     * 3. Thay thế thẻ <video> (nếu có) bằng <iframe> để trình phát tự xử lý luồng.
-     */
-    
-    container.innerHTML = `
-        <div id="playing-title" style="padding: 10px; font-weight: bold;">${title}</div>
-        <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000;">
-            <iframe 
-                id="main-video"
-                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-                src="https://www.youtube.com/embed/${id}?autoplay=1&vq=medium&rel=0" 
-                frameborder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen>
-            </iframe>
-        </div>
-    `;
-}
-
-        function closePlayer() {
-            const videoTag = document.getElementById('main-video');
-            videoTag.pause();
-            videoTag.src = "";
-            document.getElementById('player-container').style.display = 'none';
-        }
+    function closePlayer() {
+		const container = document.getElementById('player-container');
+		// Xóa toàn bộ nội dung bên trong để dừng video hoàn toàn
+		container.innerHTML = `
+			<span class="close-btn" onclick="closePlayer()">[ ĐÓNG TRÌNH PHÁT X ]</span>
+			<div id="player-target"></div>
+		`;
+		container.style.display = 'none';
+	}
     </script>
 </body>
 </html>
