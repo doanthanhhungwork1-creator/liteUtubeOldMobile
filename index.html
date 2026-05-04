@@ -58,7 +58,11 @@
             resultsDiv.innerHTML = "<p style='text-align:center; color: #0088ff;'>Đang tìm kiếm qua Google Server...</p>";
 
             try {
-                const response = await fetch(`${GAS_URL}?q=${encodeURIComponent(query)}`);
+                const response = await fetch(`${GAS_URL}?q=${encodeURIComponent(query)}`, {
+                    method: 'GET',
+                    mode: 'cors', // Đảm bảo chế độ cors được bật
+                    redirect: 'follow' // Ép trình duyệt tự động đi theo link chuyển hướng của Google
+                });
                 const data = await response.json();
                 
                 if(!data || data.length === 0) {
