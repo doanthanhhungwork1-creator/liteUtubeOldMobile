@@ -118,15 +118,14 @@
         }
 
        function playVideo(id) {
-            // Không dùng https:// trực tiếp để tránh trình duyệt tự mã hóa dấu : và /
-            // Chúng ta sẽ gửi định dạng thô, file .bat sẽ tự xử lý lại
-            const videoUrl = `https://www.youtube.com/watch?v=${id}`;
+            // Chúng ta chỉ gửi ID hoặc link đơn giản nhất
+            const videoUrl = "https://www.youtube.com/watch?v=" + id;
             
             const toast = document.getElementById('toast');
             toast.style.display = 'block';
             setTimeout(() => { toast.style.display = 'none'; }, 2000);
         
-            // Gửi lệnh
+            // Gửi lệnh qua giao thức vlc://
             window.location.href = "vlc://" + videoUrl;
         }
 
