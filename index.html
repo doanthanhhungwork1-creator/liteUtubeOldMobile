@@ -41,41 +41,44 @@
     </div>
 
    <script>
-    // Danh sách các máy chủ dự phòng, nếu cái này lỗi bạn có thể thay cái khác
-    // Một số instance tốt: https://pipedapi.lunar.icu, https://pipedapi.drgns.space, https://pipedapi.vube.cloud
-    const API_BASE = "https://pipedapi.lunar.icu"; 
+    // Danh sách các server dự phòng
+    const SERVERS = [
+        "https://pipedapi.lunar.icu",
+        "https://pipedapi.vube.cloud",
+        "https://pipedapi.drgns.space",
+        "https://api.piped.victr.me",
+        "https://piped-api.garudalinux.org"
+    ];
+
+    let currentServerIndex = 0;
+
+    // Hàm lấy Server hiện tại
+    function getBaseURL() {
+        return SERVERS[currentServerIndex];
+    }
 
     async function search() {
         const query = document.getElementById('query').value;
         if(!query) return;
         
         const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = "<p style='text-align:center'>Đang tìm kiếm...</p>";
+        resultsDiv.innerHTML = `<p style='text-align:center'>Đang tìm kiếm trên: ${getBaseURL().split('//')[1]}...</p>`;
 
         try {
-            // Thêm tham số để tránh cache và kiểm tra phản hồi
-            const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}&filter=all`);
+            const response = await fetch(`${getBaseURL()}/search?q=${encodeURIComponent(query)}&filter=all`);
             
-            if (!response.ok) throw new Error("Server đang bận");
+            if (!response.ok) throw new Error("Server bận");
             
             const data = await response.json();
-            
-            if(!data.items || data.items.length === 0) {
-                resultsDiv.innerHTML = "Không tìm thấy kết quả.";
-                return;
-            }
-
             resultsDiv.innerHTML = "";
+            
             data.items.forEach(item => {
                 if(item.type === 'video') {
                     const div = document.createElement('div');
                     div.className = 'video-item';
-                    // Tối ưu Thumbnail: Dùng ảnh nhỏ hơn để máy yếu load nhanh
-                    const thumbUrl = item.thumbnail;
-                    
                     div.onclick = () => playVideo(item.url.split('=')[1], item.title);
                     div.innerHTML = `
-                        <img class="thumb" src="${thumbUrl}" loading="lazy" onerror="this.src='https://via.placeholder.com/100x60?text=No+Thumb'">
+                        <img class="thumb" src="${item.thumbnail}" loading="lazy" onerror="this.src='https://via.placeholder.com/100x60?text=No+Thumb'">
                         <div class="info">
                             <div class="title">${item.title}</div>
                             <div class="meta">${item.uploaderName} • ${item.duration}s</div>
@@ -85,8 +88,15 @@
                 }
             });
         } catch (error) {
-            console.error(error);
-            resultsDiv.innerHTML = `<p style='color:orange; text-align:center'>Máy chủ ${API_BASE.split('//')[1]} đang quá tải hoặc gặp lỗi CORS. <br><br> Hãy thử lại sau vài giây hoặc báo cho admin thay Server.</p>`;
+            console.log(`Server ${getBaseURL()} lỗi, đang thử server dự phòng...`);
+            // Chuyển sang server tiếp theo trong danh sách
+            currentServerIndex++;
+            if (currentServerIndex < SERVERS.length) {
+                search(); // Tự động tìm lại bằng server mới
+            } else {
+                currentServerIndex = 0; // Reset về đầu nếu thử hết tất cả
+                resultsDiv.innerHTML = "<p style='color:red; text-align:center'>Tất cả server đều đang bận. Vui lòng thử lại sau!</p>";
+            }
         }
     }
 
@@ -100,24 +110,22 @@
         window.scrollTo(0, 0);
 
         try {
-            const res = await fetch(`${API_BASE}/streams/${id}`);
+            const res = await fetch(`${getBaseURL()}/streams/${id}`);
             const data = await res.json();
             
-            // Tìm luồng video chất lượng thấp nhất để máy cũ chạy mượt (thường là 240p hoặc 360p)
             let stream = data.videoStreams.find(s => s.quality === '360p' && !s.videoOnly) 
                          || data.videoStreams.find(s => !s.videoOnly)
                          || data.videoStreams[0];
 
             if(stream) {
                 videoTag.src = stream.url;
-                videoTag.play().catch(e => console.log("Cần nhấn Play thủ công"));
+                videoTag.play();
                 titleTag.innerText = title;
-            } else {
-                throw new Error();
             }
         } catch (error) {
-            alert("Lỗi: Không thể lấy luồng video. Có thể video bị hạn chế vùng.");
-            container.style.display = 'none';
+            // Nếu lỗi khi phát, thử đổi server và thông báo người dùng nhấn lại
+            currentServerIndex = (currentServerIndex + 1) % SERVERS.length;
+            alert("Lỗi luồng phát. Đã chuyển máy chủ dự phòng, vui lòng bấm chọn video lại một lần nữa.");
         }
     }
 
