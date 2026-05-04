@@ -10,111 +10,76 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lite Tube - for old mobile/car</title>
     <style>
-        body { font-family: sans-serif; background: #111; color: #ccc; margin: 0; padding: 10px; }
-        #search-box { width: 100%; display: flex; margin-bottom: 20px; position: sticky; top: 0; z-index: 99; background: #111; padding: 5px 0; }
-        input { flex: 1; padding: 12px; background: #222; border: 1px solid #444; color: #fff; font-size: 16px; }
-        button { padding: 12px; background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; }
-        
-        iframe { transform: translateZ(0); width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        
-        .video-item { display: flex; border-bottom: 1px solid #333; padding: 12px 0; color: inherit; align-items: center; cursor: pointer; }
-        .thumb { width: 120px; height: auto; margin-right: 15px; border-radius: 4px; background: #222; }
-        .info { flex: 1; overflow: hidden; }
-        .title { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .meta { font-size: 12px; color: #888; }
+    body { font-family: sans-serif; background: #111; color: #ccc; margin: 0; padding: 10px; }
+    
+    /* Search box cố định */
+    #search-box { width: 100%; display: flex; margin-bottom: 15px; position: sticky; top: 0; z-index: 101; background: #111; padding: 5px 0; }
+    input { flex: 1; padding: 12px; background: #222; border: 1px solid #444; color: #fff; font-size: 16px; border-radius: 4px 0 0 4px; }
+    button { padding: 12px; background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; border-radius: 0 4px 4px 0; }
 
-        #player-container { position: sticky; top: 0; background: #000; padding: 5px 0; z-index: 100; display: none; border-bottom: 2px solid #0056b3; }
-        .close-btn { color: #ff4444; cursor: pointer; font-weight: bold; padding: 8px; display: inline-block; background: #222; margin-bottom: 5px; border-radius: 4px; }
-    </style>
-</head>
-<body>
+    /* FIX hiển thị cho màn hình dọc iPhone 6 */
+    #player-container { 
+        position: sticky; 
+        top: 0; 
+        background: #000; 
+        z-index: 100; 
+        display: none; 
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    /* Tạo khung 16:9 chuẩn để iframe không bị méo */
+    .video-responsive {
+        position: relative;
+        padding-bottom: 56.25%; /* Tỉ lệ 16:9 */
+        height: 0;
+        overflow: hidden;
+        background: #000;
+    }
+    .video-responsive iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        height: 100% !important;
+        border: 0;
+    }
 
-    <div id="player-container"></div>
+    .video-item { display: flex; border-bottom: 1px solid #333; padding: 10px 0; cursor: pointer; }
+    .thumb { width: 100px; height: 60px; margin-right: 10px; border-radius: 4px; object-fit: cover; }
+    .info { flex: 1; min-width: 0; } /* Tránh tràn chữ trên iPhone nhỏ */
+    .title { font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .meta { font-size: 11px; color: #888; }
+    .close-btn { color: #fff; cursor: pointer; font-weight: bold; padding: 10px; display: block; text-align: center; background: #cc0000; font-size: 12px; }
+</style>
 
-    <div id="search-box">
-        <input type="text" id="query" placeholder="Tìm video trên máy cũ..." onkeypress="if(event.key==='Enter') search()">
-        <button onclick="search()">TÌM</button>
-    </div>
+<script>
+    async function playVideo(id, title) {
+        const container = document.getElementById('player-container');
+        container.innerHTML = ""; 
+        container.style.display = 'block';
+        window.scrollTo(0, 0); // Tự động cuộn lên đầu để xem video
 
-    <div id="results">
-        <p style="text-align: center; margin-top: 50px;">Hệ thống đã sẵn sàng.</p>
-    </div>
+        // Thêm tham số playsinline=1 để Safari cho phép phát bên trong web thay vì nhảy ra app Youtube
+        container.innerHTML = `
+            <div id="playing-title" style="padding: 8px; font-size: 12px; font-weight: bold; color: #fff; background: #222;">${title}</div>
+            <div class="video-responsive">
+                <iframe 
+                    src="https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+            </div>
+            <div class="close-btn" onclick="closePlayer()">ĐÓNG VIDEO X</div>
+        `;
+    }
 
-    <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxEZy6agtbhlPQqQlLUIo8E1LfpqTvDa0oPMh0vXc11g8W9vvhxm2FL0NOe2ZnqjdQqjQ/exec";
+    function closePlayer() {
+        const container = document.getElementById('player-container');
+        container.innerHTML = ''; 
+        container.style.display = 'none';
+    }
+</script>
 
-        // CƠ CHẾ MỚI: Tự động dọn dẹp RAM khi đóng app (nhấn nút X)
-        window.addEventListener('beforeunload', function () {
-            closePlayer();
-        });
-
-        window.addEventListener('pagehide', function () {
-            closePlayer();
-        });
-
-        async function search() {
-            const query = document.getElementById('query').value;
-            if(!query) return;
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = "<p style='text-align:center; color: #0088ff;'>Đang tải...</p>";
-            try {
-                const response = await fetch(`${GAS_URL}?q=${encodeURIComponent(query)}`, { redirect: 'follow' });
-                const data = await response.json();
-                if(!Array.isArray(data) || data.length === 0) {
-                    resultsDiv.innerHTML = "<p style='text-align:center;'>Không có kết quả.</p>";
-                    return;
-                }
-                resultsDiv.innerHTML = "";
-                data.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'video-item';
-                    div.onclick = () => playVideo(item.id, item.title);
-                    div.innerHTML = `
-                        <img class="thumb" src="${item.thumbnail}" loading="lazy">
-                        <div class="info">
-                            <div class="title">${item.title}</div>
-                            <div class="meta">${item.author}</div>
-                        </div>
-                    `;
-                    resultsDiv.appendChild(div);
-                });
-            } catch (error) {
-                resultsDiv.innerHTML = "<p style='color:orange; text-align:center;'>Lỗi kết nối.</p>";
-            }
-        }
-
-        async function playVideo(id, title) {
-            const container = document.getElementById('player-container');
-            container.innerHTML = ""; 
-            container.style.display = 'none';
-            if (window.gc) window.gc();
-
-            setTimeout(() => {
-                container.style.display = 'block';
-                window.scrollTo(0, 0);
-                container.innerHTML = `
-                    <span class="close-btn" onclick="closePlayer()">[ ĐÓNG TRÌNH PHÁT X ]</span>
-                    <div id="playing-title" style="padding: 10px; font-weight: bold; color: #fff;">${title}</div>
-                    <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000;">
-                        <iframe 
-                            src="https://www.youtube.com/embed/${id}?autoplay=1&vq=medium&rel=0" 
-                            frameborder="0" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            allowfullscreen>
-                        </iframe>
-                    </div>
-                `;
-            }, 50);
-        }
-
-        function closePlayer() {
-            const container = document.getElementById('player-container');
-            if (container) {
-                container.innerHTML = ''; 
-                container.style.display = 'none';
-            }
-            if (window.gc) window.gc();
-        }
-    </script>
 </body>
 </html>
