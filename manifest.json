@@ -1,8 +1,9 @@
 {
   "name": "Lite Tube GAS",
   "short_name": "LiteTube",
-  "description": "Ứng dụng xem YouTube siêu nhẹ cho máy cũ (mobile/car/tivi box) được làm bởi Đoàn Thành Hưng: doanthanhhung.work1@gmail.com",
-  "start_url": "/index.html",
+  "description": "Ứng dụng xem YouTube siêu nhẹ cho máy cũ (mobile/car) bởi DoanThanhHung.work1@gmail.com",
+  "start_url": "/LiteTube/index.html",
+  "scope": "/LiteTube/",
   "display": "standalone",
   "background_color": "#111111",
   "theme_color": "#0056b3",
