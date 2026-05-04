@@ -120,13 +120,17 @@
         function playVideo(id) {
             const videoUrl = `https://www.youtube.com/watch?v=${id}`;
             
-            // Hiển thị thông báo tạm thời
+            // Tạo một thẻ <a> tạm thời để kích hoạt giao thức mà không làm VLC hiểu lầm URL
+            const launchUrl = `vlc://${videoUrl}`;
+            
+            const a = document.createElement('a');
+            a.href = launchUrl;
+            a.click();
+        
+            // Hiển thị thông báo cho người dùng
             const toast = document.getElementById('toast');
             toast.style.display = 'block';
             setTimeout(() => { toast.style.display = 'none'; }, 2000);
-
-            // Lệnh kích hoạt VLC qua Protocol đã đăng ký
-            window.location.href = `vlc://${videoUrl}`;
         }
 
         // Giải phóng bộ nhớ khi đóng
