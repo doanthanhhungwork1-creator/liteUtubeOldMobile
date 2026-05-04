@@ -117,20 +117,17 @@
             }
         }
 
-        function playVideo(id) {
+       function playVideo(id) {
+            // Không dùng https:// trực tiếp để tránh trình duyệt tự mã hóa dấu : và /
+            // Chúng ta sẽ gửi định dạng thô, file .bat sẽ tự xử lý lại
             const videoUrl = `https://www.youtube.com/watch?v=${id}`;
             
-            // Tạo một thẻ <a> tạm thời để kích hoạt giao thức mà không làm VLC hiểu lầm URL
-            const launchUrl = `vlc://${videoUrl}`;
-            
-            const a = document.createElement('a');
-            a.href = launchUrl;
-            a.click();
-        
-            // Hiển thị thông báo cho người dùng
             const toast = document.getElementById('toast');
             toast.style.display = 'block';
             setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        
+            // Gửi lệnh
+            window.location.href = "vlc://" + videoUrl;
         }
 
         // Giải phóng bộ nhớ khi đóng
