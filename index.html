@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lite Tube - Máy Cũ</title>
+    <style>
+        /* CSS tối giản để giảm tải CPU render */
+        body { font-family: sans-serif; background: #111; color: #ccc; margin: 0; padding: 10px; }
+        #search-box { width: 100%; display: flex; margin-bottom: 20px; }
+        input { flex: 1; padding: 10px; background: #222; border: 1px solid #444; color: #fff; }
+        button { padding: 10px; background: #444; color: white; border: none; cursor: pointer; }
+        
+        .video-item { display: flex; border-bottom: 1px solid #333; padding: 10px 0; text-decoration: none; color: inherit; align-items: center; }
+        .thumb { width: 100px; height: auto; margin-right: 15px; border-radius: 4px; }
+        .info { flex: 1; }
+        .title { font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 5px; }
+        .meta { font-size: 12px; color: #888; }
+
+        #player-container { position: sticky; top: 0; background: #000; padding: 10px 0; z-index: 100; display: none; }
+        video { width: 100%; max-height: 240px; background: #000; }
+        .close-btn { color: red; cursor: pointer; font-weight: bold; padding: 5px; display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <div id="player-container">
+        <span class="close-btn" onclick="closePlayer()">[ ĐÓNG X ]</span>
+        <video id="main-video" controls autoplay playsinline></video>
+        <h3 id="playing-title" style="font-size: 14px; padding: 5px;"></h3>
+    </div>
+
+    <div id="search-box">
+        <input type="text" id="query" placeholder="Tìm video..." onkeypress="if(event.key==='Enter') search()">
+        <button onclick="search()">TÌM</button>
+    </div>
+
+    <div id="results">
+        <!-- Danh sách video sẽ hiện ở đây -->
+        <p style="text-align: center;">Nhập từ khóa để xem video cho máy yếu...</p>
+    </div>
+
+    <script>
+        const API_BASE = "https://pipedapi.kavin.rocks"; // Instance công cộng của Piped
+
+        async function search() {
+            const query = document.getElementById('query').value;
+            if(!query) return;
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = "Đang tải...";
+
+            try {
+                const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}&filter=all`);
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = "";
+                data.items.forEach(item => {
+                    if(item.type === 'video') {
+                        const div = document.createElement('div');
+                        div.className = 'video-item';
+                        div.onclick = () => playVideo(item.url.split('=')[1], item.title);
+                        div.innerHTML = `
+                            <img class="thumb" src="${item.thumbnail}" loading="lazy">
+                            <div class="info">
+                                <div class="title">${item.title}</div>
+                                <div class="meta">${item.uploaderName} • ${item.duration} giây</div>
+                            </div>
+                        `;
+                        resultsDiv.appendChild(div);
+                    }
+                });
+            } catch (error) {
+                resultsDiv.innerHTML = "Lỗi kết nối. Hãy thử lại.";
+            }
+        }
+
+        async function playVideo(id, title) {
+            const container = document.getElementById('player-container');
+            const videoTag = document.getElementById('main-video');
+            const titleTag = document.getElementById('playing-title');
+
+            container.style.display = 'block';
+            titleTag.innerText = "Đang lấy luồng: " + title;
+            window.scrollTo(0, 0);
+
+            try {
+                const res = await fetch(`${API_BASE}/streams/${id}`);
+                const data = await res.json();
+                
+                // Chọn luồng video chất lượng thấp (thường là MP4/H264) để chip yếu không bị lag
+                // Ưu tiên video có cả tiếng (videoStreams) và độ phân giải khoảng 360p
+                const lowResStream = data.videoStreams.find(s => s.quality === '360p' && !s.videoOnly) 
+                                   || data.videoStreams[0];
+
+                videoTag.src = lowResStream.url;
+                videoTag.play();
+                titleTag.innerText = title;
+            } catch (error) {
+                alert("Không thể phát video này.");
+            }
+        }
+
+        function closePlayer() {
+            const videoTag = document.getElementById('main-video');
+            videoTag.pause();
+            videoTag.src = "";
+            document.getElementById('player-container').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
