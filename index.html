@@ -89,45 +89,37 @@
         }
     }
 
-        async function playVideo(id, title) {
-            const container = document.getElementById('player-container');
-            const videoTag = document.getElementById('main-video');
-            const titleTag = document.getElementById('playing-title');
+   async function playVideo(id, title) {
+    const container = document.getElementById('player-container');
+    const titleTag = document.getElementById('playing-title');
+    const videoTag = document.getElementById('main-video');
 
-            container.style.display = 'block';
-            titleTag.innerText = "Đang lấy luồng video...";
-            window.scrollTo(0, 0);
+    // Hiển thị khung phát video
+    container.style.display = 'block';
+    titleTag.innerText = title;
+    window.scrollTo(0, 0);
 
-            let success = false;
-            // Thử lần lượt các server để lấy stream
-            for (let i = 0; i < STREAM_SERVERS.length; i++) {
-                try {
-                    const server = STREAM_SERVERS[(currentStreamServerIndex + i) % STREAM_SERVERS.length];
-                    const res = await fetch(`${server}/streams/${id}`);
-                    const streamData = await res.json();
-                    
-                    // Ưu tiên 360p cho máy cũ
-                    let stream = streamData.videoStreams.find(s => s.quality === '360p' && !s.videoOnly) 
-                                 || streamData.videoStreams.find(s => !s.videoOnly);
-
-                    if (stream) {
-                        videoTag.src = stream.url;
-                        videoTag.play();
-                        titleTag.innerText = title;
-                        success = true;
-                        currentStreamServerIndex = (currentStreamServerIndex + i) % STREAM_SERVERS.length;
-                        break;
-                    }
-                } catch (e) {
-                    console.log("Thử server stream tiếp theo...");
-                }
-            }
-
-            if (!success) {
-                alert("Lỗi: Tất cả máy chủ stream đều bận. Hãy thử lại sau ít phút.");
-                container.style.display = 'none';
-            }
-        }
+    /**
+     * Giải pháp cho máy cũ & ổn định:
+     * 1. Sử dụng YouTube Embed Player để tránh lỗi CORS và sập server Piped.
+     * 2. Thêm tham số vq=medium để ép YouTube ưu tiên phát ở độ phân giải 360p.
+     * 3. Thay thế thẻ <video> (nếu có) bằng <iframe> để trình phát tự xử lý luồng.
+     */
+    
+    container.innerHTML = `
+        <div id="playing-title" style="padding: 10px; font-weight: bold;">${title}</div>
+        <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000;">
+            <iframe 
+                id="main-video"
+                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+                src="https://www.youtube.com/embed/${id}?autoplay=1&vq=medium&rel=0" 
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen>
+            </iframe>
+        </div>
+    `;
+}
 
         function closePlayer() {
             const videoTag = document.getElementById('main-video');
