@@ -59,9 +59,7 @@
 
             try {
                 const response = await fetch(`${GAS_URL}?q=${encodeURIComponent(query)}`, {
-                    method: 'GET',
-                    mode: 'cors', // Đảm bảo chế độ cors được bật
-                    redirect: 'follow' // Ép trình duyệt tự động đi theo link chuyển hướng của Google
+                    redirect: 'follow'
                 });
                 const data = await response.json();
                 
